@@ -3,86 +3,327 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本地天气预报</title>
+    <title>全能天气预报 Pro</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
+        :root {
+            --primary: #2563eb;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #1e293b;
+            --subtext: #64748b;
         }
+
         body {
-            background-color: #f5f5f5;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
         }
-        .weather-card {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 350px;
-            text-align: center;
+
+        .container {
+            width: 100%;
+            max-width: 550px;
+            background: var(--card);
+            border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 25px;
+            overflow: hidden;
         }
-        .city {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .temp {
-            font-size: 48px;
-            color: #222;
-            margin: 20px 0;
-        }
-        .desc {
-            font-size: 18px;
-            color: #666;
+
+        /* 搜索区域 */
+        .search-bar {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
         }
-        .detail {
+
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            outline: none;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 时间与城市 */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .time-box {
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            color: var(--subtext);
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .city-name {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        /* 当前大温度显示 */
+        .main-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .temp-now {
+            font-size: 5rem;
+            font-weight: 200;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .temp-range {
+            font-size: 1.1rem;
+            color: var(--subtext);
+            margin-top: 5px;
+        }
+
+        /* 24小时滚动预报 */
+        .hourly-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .hourly-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            padding-bottom: 10px;
+            scrollbar-width: thin;
+        }
+
+        .hourly-container::-webkit-scrollbar { height: 6px; }
+        .hourly-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .hourly-item {
+            min-width: 60px;
+            text-align: center;
+            background: #f8fafc;
+            padding: 12px 8px;
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        .h-time { font-size: 0.8rem; color: var(--subtext); }
+        .h-temp { font-weight: bold; display: block; margin-top: 5px; }
+
+        /* 详情网格 */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .detail-item { text-align: center; }
+        .detail-label { font-size: 0.7rem; color: var(--subtext); display: block; }
+        .detail-value { font-weight: bold; font-size: 1rem; }
+
+        /* 7天预报列表 */
+        .forecast-list { display: flex; flex-direction: column; }
+        .forecast-day {
             display: flex;
             justify-content: space-between;
-            font-size: 14px;
-            color: #888;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
         }
+        .f-date { width: 90px; }
+        .f-desc { flex: 1; text-align: center; color: var(--subtext); font-size: 0.9rem; }
+        .f-temp { width: 110px; text-align: right; font-weight: bold; }
+
+        .loading { text-align: center; padding: 50px; color: var(--subtext); }
     </style>
 </head>
 <body>
-    <div class="weather-card">
-        <div class="city" id="city">加载中...</div>
-        <div class="temp" id="temp">-- °C</div>
-        <div class="desc" id="desc">--</div>
-        <div class="detail">
-            <span id="wind">风力：--</span>
-            <span id="humidity">湿度：--</span>
-        </div>
+
+<div class="container">
+    <div class="search-bar">
+        <input type="text" id="cityInput" placeholder="搜索城市...">
+        <button onclick="handleSearch()">搜索</button>
     </div>
 
-    <script>
-        // 替换为你自己申请的和风天气API Key
-        const API_KEY = "你的和风天气API Key";
-        // 可替换为目标城市的adcode（如广州 440100），或使用定位获取
-        const CITY_ADCODE = "440100"; 
-        const API_URL = `https://devapi.qweather.com/v7/weather/now?location=${CITY_ADCODE}&key=${API_KEY}`;
+    <div id="weatherContent">
+        <div class="loading">正在定位并获取天气...</div>
+    </div>
+</div>
 
-        // 获取天气数据
-        fetch(API_URL)
-            .then(response => response.json())
-            .then(data => {
-                if (data.code === "200") {
-                    document.getElementById("city").textContent = data.location.name;
-                    document.getElementById("temp").textContent = `${data.now.temp} °C`;
-                    document.getElementById("desc").textContent = data.now.text;
-                    document.getElementById("wind").textContent = `风力：${data.now.windDir} ${data.now.windScale}级`;
-                    document.getElementById("humidity").textContent = `湿度：${data.now.humidity}%`;
-                } else {
-                    alert("天气数据获取失败");
-                }
-            })
-            .catch(err => console.error("请求错误：", err));
-    </script>
+<script>
+    const weatherCodes = {
+        0: "晴朗", 1: "大部晴朗", 2: "部分多云", 3: "阴天",
+        45: "雾", 48: "雾凇", 51: "细雨", 53: "中等细雨", 55: "浓密细雨",
+        61: "微雨", 63: "中雨", 65: "大雨", 71: "微雪", 73: "中雪", 75: "大雪",
+        80: "阵雨", 81: "强阵雨", 82: "极端阵雨", 95: "雷暴"
+    };
+
+    // 时间显示：包含年份，精确到秒
+    function initClock() {
+        const update = () => {
+            const el = document.getElementById('realTime');
+            if (!el) return;
+            const now = new Date();
+            el.textContent = now.toLocaleString('zh-CN', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                weekday: 'long', hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false
+            });
+        };
+        setInterval(update, 1000);
+        update();
+    }
+
+    // 页面初始化：IP定位
+    window.onload = async () => {
+        try {
+            const res = await fetch('http://ip-api.com/json/?lang=zh-CN');
+            const loc = await res.json();
+            if(loc.status === "success") {
+                loadWeather(loc.lat, loc.lon, loc.city);
+            } else {
+                loadWeather(22.54, 114.06, "深圳");
+            }
+        } catch (e) {
+            loadWeather(22.54, 114.06, "深圳");
+        }
+    };
+
+    async function handleSearch() {
+        const query = document.getElementById('cityInput').value.trim();
+        if (!query) return;
+        try {
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=zh`);
+            const geoData = await geoRes.json();
+            if (geoData.results) {
+                const city = geoData.results[0];
+                loadWeather(city.latitude, city.longitude, city.name);
+            } else { alert("未找到该城市"); }
+        } catch (e) { alert("搜索失败"); }
+    }
+
+    async function loadWeather(lat, lon, cityName) {
+        const content = document.getElementById('weatherContent');
+        try {
+            // 请求参数包含当前数据、小时数据(24小时)、每日数据(7天)
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`;
+            
+            const res = await fetch(url);
+            const data = await res.json();
+
+            const cur = data.current;
+            const daily = data.daily;
+            const hourly = data.hourly;
+
+            // 获取当前时间的索引
+            const nowHour = new Date().getHours();
+
+            let html = `
+                <div class="header">
+                    <div class="time-box" id="realTime"></div>
+                    <div class="city-name">${cityName}</div>
+                </div>
+
+                <div class="main-display">
+                    <div class="temp-now">${Math.round(cur.temperature_2m)}°</div>
+                    <div style="font-weight:500;">${weatherCodes[cur.weather_code] || '未知'}</div>
+                    <div class="temp-range">最高 ${Math.round(daily.temperature_2m_max[0])}° / 最低 ${Math.round(daily.temperature_2m_min[0])}°</div>
+                </div>
+
+                <div class="hourly-section">
+                    <span class="section-title">24小时预报</span>
+                    <div class="hourly-container">
+            `;
+
+            // 生成24小时预报 (从当前小时开始)
+            for (let i = nowHour; i < nowHour + 24; i++) {
+                const time = new Date(hourly.time[i]);
+                const displayHour = time.getHours() + ":00";
+                html += `
+                    <div class="hourly-item">
+                        <span class="h-time">${displayHour}</span>
+                        <span class="h-temp">${Math.round(hourly.temperature_2m[i])}°</span>
+                        <span style="font-size:0.7rem; color:var(--subtext)">${weatherCodes[hourly.weather_code[i]]}</span>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">湿度</span>
+                        <span class="detail-value">${cur.relative_humidity_2m}%</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">风速</span>
+                        <span class="detail-value">${cur.wind_speed_10m} <small>km/h</small></span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">降水概率</span>
+                        <span class="detail-value">${daily.precipitation_probability_max[0]}%</span>
+                    </div>
+                </div>
+
+                <span class="section-title">未来 7 天预报</span>
+                <div class="forecast-list">
+            `;
+
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(daily.time[i]);
+                const dayStr = i === 0 ? "今天" : date.toLocaleDateString('zh-CN', {weekday: 'short'});
+                html += `
+                    <div class="forecast-day">
+                        <span class="f-date">${dayStr}</span>
+                        <span class="f-desc">${weatherCodes[daily.weather_code[i]]}</span>
+                        <span class="f-temp">${Math.round(daily.temperature_2m_max[i])}° / ${Math.round(daily.temperature_2m_min[i])}°</span>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            content.innerHTML = html;
+            initClock(); // 重新加载时钟
+
+        } catch (e) {
+            content.innerHTML = `<div class="loading" style="color:red">数据加载失败</div>`;
+        }
+    }
+
+    document.getElementById('cityInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSearch();
+    });
+</script>
+
 </body>
 </html>
